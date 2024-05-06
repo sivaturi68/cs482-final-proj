@@ -6,7 +6,7 @@ import random
 import matplotlib.pyplot as plt
 
 class LinearRANSACModel:
-    def __init__(self, k=50, n=5, last=10):
+    def __init__(self, k=50, n=5, last=10, thresh=None):
         self.X = None
         self.y = None
 
@@ -36,7 +36,11 @@ class LinearRANSACModel:
             X = self.get_system_mat(xs[rand_rows])
             predicted = X @ coeffs
 
-            score = np.abs((predicted ** 2 - ys[rand_rows] ** 2).sum())
+            # score = np.abs((predicted ** 2 - ys[rand_rows] ** 2).sum())
+            score = self.n
+            diffs = np.abs(predicted - ys[rand_rows])
+            thresh = .25 * (diffs.max() - diffs.min())
+            score -= len(diffs[diffs < thresh])
 
             if score < best_score:
                 best_score = score
