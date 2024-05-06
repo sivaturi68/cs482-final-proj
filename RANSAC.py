@@ -14,7 +14,7 @@ class LinearRANSACModel:
         self.n = n
         self.coefficients_ = None
 
-    def get_linear_mat(self, xs):
+    def get_system_mat(self, xs):
         X = np.hstack((xs, np.ones((xs.shape[0], 1))))
         return X
 
@@ -28,7 +28,7 @@ class LinearRANSACModel:
             rand_rows = npr.randint(xs.shape[0], size=(self.n))
             coeffs = self.solve(xs[rand_rows], ys[rand_rows])
 
-            X = self.get_linear_mat(xs[rand_rows])
+            X = self.get_system_mat(xs[rand_rows])
             predicted = X @ coeffs
 
             score = np.abs((predicted ** 2 - ys[rand_rows] ** 2).sum())
@@ -40,36 +40,84 @@ class LinearRANSACModel:
         self.coefficients_ = best_coeffs
 
     def transform(self, xs):
-        X = self.get_linear_mat(xs)
+        X = self.get_system_mat(xs)
         return X @ self.coefficients_
 
     def solve(self, xs, ys):
-        X = self.get_linear_mat(xs)
+        X = self.get_system_mat(xs)
         coeffs, residuals, rank, s = npl.lstsq(X, ys)
         return coeffs
 
+class QuadraticRANSACModel(LinearRANSACModel):
+    def get_system_mat(self, xs):
+        X = np.hstack((xs ** 2, xs, np.ones((xs.shape[0], 1))))
+        return X
+class CubicRANSACModel(LinearRANSACModel):
+    def get_system_mat(self, xs):
+        X = np.hstack((xs ** 3, xs ** 2, xs, np.ones((xs.shape[0], 1))))
+        return X
+
 if __name__ == '__main__':
-    quadratic = False
-    if quadratic:
-        pass
-    else:
-        ransac = LinearRANSACModel(k=50, n=5)
+    method = 'quadratic'
+    match method:
+        case 'cubic':
+            ransac = CubicRANSACModel(k=50, n=5)
 
-        x_dims = 1
-        num_x = 10
+            x_dims = 1
+            num_x = 10
 
-        actual_coeffs = npr.random((x_dims + 1, 1)) * 5
-        xs = np.linspace(0, 10, num_x)[:, np.newaxis]
-        actual_ys = (ransac.get_linear_mat(xs) @ actual_coeffs) * (npr.random((num_x, 1)) * 0.1 + .9)
+            actual_coeffs = npr.random((x_dims + 3, 1))
+            xs = np.linspace(0, 10, num_x)[:, np.newaxis]
+            actual_ys = (ransac.get_system_mat(xs) @ actual_coeffs) * (npr.random((num_x, 1)) * 0.1 + .9)
 
-        ransac.fit(xs, actual_ys)
-        print(f'coefficients: {ransac.coefficients_}')
+            ransac.fit(xs, actual_ys)
+            print(f'coefficients: {ransac.coefficients_}')
 
-        predicted_ys = (ransac.get_linear_mat(xs) @ ransac.coefficients_)
+            predicted_ys = (ransac.get_system_mat(xs) @ ransac.coefficients_)
 
-        plt.figure()
-        plt.scatter(xs, actual_ys)
-        plt.plot(xs, predicted_ys)
+            plt.figure()
+            plt.scatter(xs, actual_ys)
+            plt.plot(xs, predicted_ys)
 
-        plt.show()
+            plt.show()
+        case 'quadratic':
+            ransac = QuadraticRANSACModel(k=50, n=5)
+
+            x_dims = 1
+            num_x = 10
+
+            actual_coeffs = npr.random((x_dims + 2, 1))
+            xs = np.linspace(0, 10, num_x)[:, np.newaxis]
+            actual_ys = (ransac.get_system_mat(xs) @ actual_coeffs) * (npr.random((num_x, 1)) * 0.1 + .9)
+
+            ransac.fit(xs, actual_ys)
+            print(f'coefficients: {ransac.coefficients_}')
+
+            predicted_ys = (ransac.get_system_mat(xs) @ ransac.coefficients_)
+
+            plt.figure()
+            plt.scatter(xs, actual_ys)
+            plt.plot(xs, predicted_ys)
+
+            plt.show()
+        case 'linear':
+            ransac = LinearRANSACModel(k=50, n=5)
+
+            x_dims = 1
+            num_x = 10
+
+            actual_coeffs = npr.random((x_dims + 1, 1))
+            xs = np.linspace(0, 10, num_x)[:, np.newaxis]
+            actual_ys = (ransac.get_system_mat(xs) @ actual_coeffs) * (npr.random((num_x, 1)) * 0.1 + .9)
+
+            ransac.fit(xs, actual_ys)
+            print(f'coefficients: {ransac.coefficients_}')
+
+            predicted_ys = (ransac.get_system_mat(xs) @ ransac.coefficients_)
+
+            plt.figure()
+            plt.scatter(xs, actual_ys)
+            plt.plot(xs, predicted_ys)
+
+            plt.show()
 
