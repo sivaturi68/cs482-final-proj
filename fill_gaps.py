@@ -9,11 +9,13 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import bokeh as bk
 import time
+import deriv
 
 from RANSAC import CubicRANSACModel, QuadraticRANSACModel, LinearRANSACModel
 
 # Load tracking data
 tracking = pd.read_csv(
+    # './TestOut/exp2/detection_results.csv',
     './TestOut/exp4/detection_results.csv',
     header=0,
     index_col=0,
@@ -44,21 +46,59 @@ LAST = 5
 
 ransac = QuadraticRANSACModel(k=100, n=N, last=LAST)
 
-# def get_motion_field(frames):
-#     u_field = np.zeros_like(frame1)
-#     v_field = np.zeros_like(frame1)
-#     zeroes = np.zeros_like(frame1)
+def get_motion_field(frames):
+    frames_gray = [cv.cvtColor(f, cv.COLOR_BGR2GRAY) for f in frames[-5:]]
+    frames_gray = np.array(frames_gray)
+    frames_gray = (frames_gray - frames_gray.min()) / (frames_gray.max() - frames_gray.min())
 
-#     l = 0.01
+    u_field = np.zeros_like(frames_gray[0]).astype('float32')
+    v_field = np.zeros_like(frames_gray[0]).astype('float32')
 
-#     # while True:
-#     for i in range(100):
-#         calculation = (I_x[0] * u_field + I_y[0] * v_field + I_t[0]) / ((1 / l) + I_x[0] ** 2 + I_y[0] ** 2)
-#         u_field -= calculation * I_x[0]
-        # v_field -= calculation * I_y[0]
+    I_x = deriv.horiz_deriv(frames_gray).astype('float32')
+    I_y = deriv.vert_deriv(frames_gray).astype('float32')
+    I_t = deriv.time_deriv(frames_gray).astype('float32')
+
+    l = 0.01
+
+    # while True:
+    for i in range(5):
+        calculation = (I_x[0] * u_field + I_y[0] * v_field + I_t[0]) / ((1 / l) + I_x[0] ** 2 + I_y[0] ** 2)
+        u_field -= calculation * I_x[0]
+        v_field -= calculation * I_y[0]
+
+    return u_field, v_field
+
+def motion_field_to_frame(u_field, v_field):
+    return np.dstack((u_field, v_field, np.zeros_like(u_field)))
+
+def get_hom_between_frames(frame1, frame2):
+    orb = cv.ORB_create(250)
+
+    kp1, ds1 = orb.detectAndCompute(frame1, None)
+    kp2, ds2 = orb.detectAndCompute(frame2, None)
+
+    matcher = cv.BFMatcher(cv.NORM_HAMMING, crossCheck=True)
+    matches = list(matcher.match(ds1, ds2))
+    matches.sort(key=lambda x: x.distance)
+    matches = matches[:len(matches) // 2]
+
+    p1 = np.zeros((len(matches), 2))
+    p2 = np.zeros((len(matches), 2))
+
+    p1 = np.array([kp1[matches[i].queryIdx].pt for i in range(len(matches))])
+    p2 = np.array([kp2[matches[i].trainIdx].pt for i in range(len(matches))])
+
+    H, _ = cv.findHomography(p1, p2, cv.RANSAC)
+
+    return H
+
+def apply_homography(H, x, y):
+    Xp = H @ np.array([x, y, 1]).T
+    return np.array(Xp[:2]) / Xp[2]
+
 
 def process_frame(frame):
-    global frames, frame_no, vwidth, vheight
+    global frames, frame_no, vwidth, vheight, data
     frames.append(frame)
 
     if frame_no in tracking.index:
@@ -73,6 +113,10 @@ def process_frame(frame):
 
     if len(data) < N or len(data) < LAST:
         return frame
+
+    H = get_hom_between_frames(frames[-1], frames[-2])
+
+    data = [[t, *apply_homography(npl.inv(H), x, y)] for (t, x, y) in data]
 
     mat = np.array(data)
     ts, xs, ys = mat.T
@@ -93,11 +137,12 @@ def process_frame(frame):
         False, (255, 0, 0))
 
     return annotated
+    # return motion_field_to_frame(*motion_field)
     # return frame
 
 # Load videos into memory
 cap = cv.VideoCapture('soccer_video_static/fk.mp4')
-# cap = cv.VideoCapture('./TestOut/exp2/labels/Soccer_test.mp4')
+# cap = cv.VideoCapture('soccer_video/Soccer_test.mp4')
 
 vwidth  = cap.get(cv.CAP_PROP_FRAME_WIDTH)
 vheight = cap.get(cv.CAP_PROP_FRAME_HEIGHT)
