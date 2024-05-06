@@ -14,7 +14,7 @@ from RANSAC import CubicRANSACModel, QuadraticRANSACModel, LinearRANSACModel
 
 # Load tracking data
 tracking = pd.read_csv(
-    './TestOut/exp2/detection_results.csv',
+    './TestOut/exp4/detection_results.csv',
     header=0,
     index_col=0,
     names=['frame_id', 'class_id', 'x_center', 'y_center', 'width', 'height', 'confidence'])
@@ -39,13 +39,23 @@ frame_no = 0
 
 data = []
 
-N = 5
-LAST = 15
+N = 4
+LAST = 5
 
-ransac = LinearRANSACModel(k=100, n=N, last=LAST)
+ransac = QuadraticRANSACModel(k=100, n=N, last=LAST)
 
-def get_motion_field(frame1, frame2):
-    pass
+# def get_motion_field(frames):
+#     u_field = np.zeros_like(frame1)
+#     v_field = np.zeros_like(frame1)
+#     zeroes = np.zeros_like(frame1)
+
+#     l = 0.01
+
+#     # while True:
+#     for i in range(100):
+#         calculation = (I_x[0] * u_field + I_y[0] * v_field + I_t[0]) / ((1 / l) + I_x[0] ** 2 + I_y[0] ** 2)
+#         u_field -= calculation * I_x[0]
+        # v_field -= calculation * I_y[0]
 
 def process_frame(frame):
     global frames, frame_no, vwidth, vheight
@@ -86,7 +96,7 @@ def process_frame(frame):
     # return frame
 
 # Load videos into memory
-cap = cv.VideoCapture('soccer_video/Soccer_test.mp4')
+cap = cv.VideoCapture('soccer_video_static/fk.mp4')
 # cap = cv.VideoCapture('./TestOut/exp2/labels/Soccer_test.mp4')
 
 vwidth  = cap.get(cv.CAP_PROP_FRAME_WIDTH)
