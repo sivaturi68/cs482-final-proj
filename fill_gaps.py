@@ -15,8 +15,8 @@ from RANSAC import CubicRANSACModel, QuadraticRANSACModel, LinearRANSACModel
 
 # Load tracking data
 tracking = pd.read_csv(
-    # './TestOut/exp2/detection_results.csv',
-    './TestOut/exp4/detection_results.csv',
+    './TestOut/exp2/detection_results.csv',
+    # './TestOut/exp4/detection_results.csv',
     header=0,
     index_col=0,
     names=['frame_id', 'class_id', 'x_center', 'y_center', 'width', 'height', 'confidence'])
@@ -141,15 +141,19 @@ def process_frame(frame):
     # return frame
 
 # Load videos into memory
-cap = cv.VideoCapture('soccer_video_static/fk.mp4')
-# cap = cv.VideoCapture('soccer_video/Soccer_test.mp4')
+# cap = cv.VideoCapture('soccer_video_static/fk.mp4')
+cap = cv.VideoCapture('soccer_video/Soccer_test.mp4')
 
-vwidth  = cap.get(cv.CAP_PROP_FRAME_WIDTH)
-vheight = cap.get(cv.CAP_PROP_FRAME_HEIGHT)
+vwidth  = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
+vheight = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 # vwidth  = 1280
 # vheight = 720
-framerate = cap.get(cv.CAP_PROP_FPS)
+framerate = float(cap.get(cv.CAP_PROP_FPS))
 previous_frame_time = 0
+
+fourcc = cv.VideoWriter_fourcc(*'DIVX')
+# out = cv.VideoWriter('soccer_video_static_annotated.avi', fourcc, framerate, (vwidth, vheight))
+out = cv.VideoWriter('soccer_video_annotated.avi', fourcc, framerate, (vwidth, vheight))
 
 while cap.isOpened():
     ret, frame = cap.read()
@@ -171,10 +175,13 @@ while cap.isOpened():
     annotated = process_frame(grey)
     cv.imshow('frame', annotated)
 
+    out.write(annotated)
+
     if cv.waitKey(1) == ord('q'):
         break
 
     frame_no += 1
 
 cap.release()
+out.release()
 cv.destroyAllWindows()
