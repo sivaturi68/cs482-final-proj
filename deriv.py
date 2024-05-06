@@ -1,6 +1,7 @@
 import scipy
 import numpy as np
 
+# 3d derivatives for image-sequences/planes
 convolve = lambda img, flt: scipy.ndimage.convolve(img, flt, mode='nearest')
 
 def horiz_deriv(video: np.ndarray):
