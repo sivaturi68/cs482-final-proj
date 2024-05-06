@@ -1,4 +1,4 @@
-image_name,class_id,confidence,x_center,y_center,width,height
+image_name,class_id,x_center,y_center,width,height,confidence
 Soccer_test_3,0,0.434635,0.579167,0.0109375,0.0175926,0.420608
 Soccer_test_4,0,0.434635,0.579167,0.0109375,0.0175926,0.422163
 Soccer_test_6,0,0.915104,0.224074,0.00729167,0.0111111,0.266539
