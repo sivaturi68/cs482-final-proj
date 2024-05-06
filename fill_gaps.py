@@ -10,14 +10,14 @@ import matplotlib.pyplot as plt
 import bokeh as bk
 import time
 
-from RANSAC import CubicRANSACModel, QuadraticRANSACModel
+from RANSAC import CubicRANSACModel, QuadraticRANSACModel, LinearRANSACModel
 
 # Load tracking data
 tracking = pd.read_csv(
     './TestOut/exp2/detection_results.csv',
     header=0,
     index_col=0,
-    names=['frame_id', 'class_id', 'confidence', 'x_center', 'y_center', 'width', 'height'])
+    names=['frame_id', 'class_id', 'x_center', 'y_center', 'width', 'height', 'confidence'])
 
 def reformat_row(row):
     cid, conf, x, y, w, h = row
@@ -40,20 +40,24 @@ frame_no = 0
 data = []
 
 N = 5
-LAST = 5
+LAST = 15
 
-ransac = CubicRANSACModel(k=100, n=N, last=LAST)
+ransac = LinearRANSACModel(k=100, n=N, last=LAST)
+
+def get_motion_field(frame1, frame2):
+    pass
 
 def process_frame(frame):
     global frames, frame_no, vwidth, vheight
     frames.append(frame)
 
     if frame_no in tracking.index:
-        _, conf, x_center, y_center, _, _ = tracking.loc[frame_no]
+        _, x_center, y_center, _, _, conf = tracking.loc[frame_no]
         if conf >= 0.30:
-            t, x, y = frame_no, (x_center * vwidth / 2) + vwidth / 2, (vheight // 2) + (-y_center * vheight)
+            # t, x, y = frame_no, (x_center + 1) * vwidth, -1 * (y_center - 1) * vheight
+            t, x, y = frame_no, x_center * vwidth, y_center * vheight
             data.append([t, x, y])
-            frame = cv.circle(frame, np.int32([x, 500]), 50, (255, 0, 0), -1)
+            frame = cv.circle(frame, np.int32([x, y]), 5, (255, 0, 0), -1)
         else:
             print(f'confident frame #{frame_no}')
 
@@ -73,13 +77,13 @@ def process_frame(frame):
         np.array([predicted_xs[:, 0], predicted_ys[:, 0]]).T
         ])
 
-    # annotated = cv.polylines(
-    #     frame,
-    #     polyline_arr,
-    #     False, (255, 0, 0))
+    annotated = cv.polylines(
+        frame,
+        polyline_arr,
+        False, (255, 0, 0))
 
-    # return annotated
-    return frame
+    return annotated
+    # return frame
 
 # Load videos into memory
 cap = cv.VideoCapture('soccer_video/Soccer_test.mp4')
